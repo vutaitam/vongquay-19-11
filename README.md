@@ -1,7 +1,8 @@
 # 🎡 Vòng Quay 19/11
 
-Vòng quay chọn **13 bạn nam** nhận quà ngày Quốc tế Nam giới 19/11.
-Mỗi bạn nữ quay 1 lượt → ra 1 bạn nam. Bạn nam đã trúng tự rời khỏi vòng quay.
+Vòng quay quà ngày Quốc tế Nam giới 19/11: **1 bạn nữ tặng quà cho 3 bạn nam**.
+Mỗi bạn nữ quay 3 lượt → ra 3 bạn nam (13 × 3 = 39 lượt, 6 bạn nam không được gọi tên).
+Bạn nam đã trúng tự rời khỏi vòng quay.
 
 Web tĩnh (HTML/CSS/JS thuần, không cần build): `index.html`, `style.css`, `app.js`.
 
@@ -22,7 +23,7 @@ Mở bằng một trong 3 cách:
 
 Trong đó có thể:
 
-- Chọn trước bạn nam cho từng bạn nữ (để **🎲 Ngẫu nhiên** thì quay thật).
+- Chọn trước bạn nam cho từng lượt (3 lượt/bạn nữ; để **🎲 Ngẫu nhiên** thì lượt đó quay thật).
   Lượt ngẫu nhiên không bao giờ ra bạn đang được chỉ định cho người khác.
 - **Copy link có chỉ định**: tạo link `...#cc=...` để mở trên máy chiếu; mở xong link tự xoá phần `#cc=...` khỏi thanh địa chỉ.
 - Sửa danh sách bạn nữ, tên lớp, huỷ lượt vừa quay, tải CSV, xoá kết quả, khôi phục danh sách gốc.

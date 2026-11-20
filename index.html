@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Vòng Quay 19/11</title>
-  <meta name="description" content="Vòng quay chọn 13 bạn nam nhận quà ngày Quốc tế Nam giới 19/11">
+  <meta name="description" content="Vòng quay 19/11: mỗi bạn nữ tặng quà cho 3 bạn nam">
   <meta name="theme-color" content="#14213d">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='46' fill='%2314213d'/><path d='M50 50L96 50A46 46 0 0 1 73 90Z' fill='%23fca311'/><path d='M50 50L73 90A46 46 0 0 1 27 90Z' fill='%232a9d8f'/><path d='M50 50L27 90A46 46 0 0 1 4 50Z' fill='%23e76f51'/><circle cx='50' cy='50' r='9' fill='%23fff'/></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -72,6 +72,7 @@
       <div class="win-top">🎉 Xin chúc mừng!</div>
       <div class="win-name" id="winName"></div>
       <div class="win-sub">sẽ nhận quà 19/11 từ bạn <b id="winGirl"></b></div>
+      <div class="win-nth" id="winNth"></div>
       <div class="win-actions">
         <button class="btn primary" id="btnWinOk">Tuyệt vời!</button>
       </div>
@@ -82,7 +83,7 @@
   <div class="modal hidden" id="boardModal" role="dialog" aria-modal="true">
     <div class="board">
       <div class="board-head">
-        <h2>🏆 13 chàng trai may mắn</h2>
+        <h2 id="boardTitle">🏆 39 chàng trai may mắn</h2>
         <button class="x" data-close="boardModal" aria-label="Đóng">✕</button>
       </div>
       <div class="board-grid" id="boardGrid"></div>
@@ -98,7 +99,7 @@
       </div>
       <div class="admin-body">
         <h3>Chỉ định kết quả</h3>
-        <p class="note">Chọn trước bạn nam mà mỗi bạn nữ sẽ quay trúng. Để “🎲 Ngẫu nhiên” thì quay thật. Lượt ngẫu nhiên sẽ không bao giờ ra bạn đang được chỉ định cho người khác.</p>
+        <p class="note">Chọn trước bạn nam cho từng lượt (mỗi bạn nữ quay 3 lượt). Để “🎲 Ngẫu nhiên” thì quay thật. Lượt ngẫu nhiên sẽ không bao giờ ra bạn đang được chỉ định cho người khác.</p>
         <div class="rig-table" id="rigTable"></div>
         <div class="row">
           <button class="sbtn" id="btnRigClear">Bỏ hết chỉ định</button>

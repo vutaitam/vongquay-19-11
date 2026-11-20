@@ -1,6 +1,6 @@
 /* ==========================================================
- * Vòng Quay 19/11 — chọn 13 bạn nam nhận quà
- * Mỗi bạn nữ quay 1 lượt -> ra 1 bạn nam. Bạn nam đã trúng rời khỏi vòng quay.
+ * Vòng Quay 19/11 — 1 bạn nữ tặng quà cho 3 bạn nam
+ * Mỗi bạn nữ quay 3 lượt -> ra 3 bạn nam. Bạn nam đã trúng rời khỏi vòng quay.
  * Có thể chỉ định trước kết quả cho từng bạn nữ (bảng cài đặt ẩn).
  * Mọi dữ liệu lưu trong localStorage của trình duyệt đang dùng.
  * ========================================================== */
@@ -30,6 +30,7 @@
   const TEXT_ON = { '#14213d': '#ffffff', '#fca311': '#14213d', '#2a9d8f': '#ffffff', '#e76f51': '#ffffff', '#8ecae6': '#14213d', '#3d5a80': '#ffffff' };
   const FONT = '"Be Vietnam Pro", "Segoe UI", sans-serif';
   const KEY = 'vongquay1911.v1';
+  const PER_GIRL = 3;          // mỗi bạn nữ tặng quà cho 3 bạn nam = quay 3 lượt
 
   /* ---------- Tiện ích ---------- */
   const $ = id => document.getElementById(id);
@@ -53,9 +54,27 @@
   function load() {
     try {
       const s = JSON.parse(localStorage.getItem(KEY));
-      if (s && Array.isArray(s.boys) && Array.isArray(s.girls)) return Object.assign(freshState(), s);
+      if (s && typeof s === 'object') {
+        const st = Object.assign(freshState(), s);
+        if (!Array.isArray(st.boys)) st.boys = DEFAULT_BOYS.slice();
+        if (!Array.isArray(st.girls)) st.girls = DEFAULT_GIRLS.slice();
+        if (!Array.isArray(st.results)) st.results = [];
+        return fixRig(st);
+      }
     } catch (e) { /* bỏ qua */ }
     return freshState();
+  }
+  // Chỉ định dạng { "tên bạn nữ": ["bạn nam lượt 1", "lượt 2", "lượt 3"] } ("" = ngẫu nhiên)
+  // (bản cũ lưu 1 tên dạng chuỗi -> đổi sang mảng)
+  function fixRig(s) {
+    const rig = {};
+    Object.entries(s.rig || {}).forEach(([g, v]) => {
+      const arr = (Array.isArray(v) ? v : [v]).slice(0, PER_GIRL).map(norm);
+      while (arr.length < PER_GIRL) arr.push('');
+      if (arr.some(Boolean)) rig[g] = arr;
+    });
+    s.rig = rig;
+    return s;
   }
   function save() {
     try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* bỏ qua */ }
@@ -78,21 +97,35 @@
   }
 
   /* ---------- Truy vấn trạng thái ---------- */
-  const resultOf = girl => state.results.find(r => same(r.girl, girl));
+  const resultsOf = girl => state.results.filter(r => same(r.girl, girl));   // các lượt đã quay của 1 bạn nữ
+  const isDone = girl => resultsOf(girl).length >= PER_GIRL;
   const wonBoys = () => state.results.map(r => r.boy);
   const remainingBoys = () => state.boys.filter(b => !wonBoys().some(w => same(w, b)));
-  const pendingGirls = () => state.girls.filter(g => !resultOf(g));
+  const pendingGirls = () => state.girls.filter(g => !isDone(g));
+  const totalTurns = () => state.girls.length * PER_GIRL;
 
-  /** Chọn bạn nam cho lượt quay của bạn nữ `girl` trong số `pool`. */
+  /** Các bạn nam đang được "giữ chỗ" cho những lượt có chỉ định chưa quay (trừ lượt đang quay). */
+  function reservedBoys(girl, k) {
+    const list = [];
+    state.girls.forEach(g => {
+      const plan = state.rig[g] || [];
+      const from = same(g, girl) ? k + 1 : resultsOf(g).length;
+      for (let j = from; j < PER_GIRL; j++) if (plan[j]) list.push(plan[j]);
+    });
+    return list;
+  }
+
+  /** Chọn bạn nam cho lượt quay tiếp theo của bạn nữ `girl` trong số `pool`. */
   function pickBoy(girl, pool) {
-    // 1) Có chỉ định và bạn đó còn trên vòng quay -> ra đúng bạn đó
-    const want = state.rig[girl];
+    const k = resultsOf(girl).length;            // đây là lượt thứ k+1 của bạn này
+    // 1) Lượt này có chỉ định và bạn đó còn trên vòng quay -> ra đúng bạn đó
+    const want = (state.rig[girl] || [])[k];
     if (want) {
       const hit = pool.find(b => same(b, want));
       if (hit) return hit;
     }
-    // 2) Ngẫu nhiên, nhưng tránh các bạn đang được "giữ chỗ" cho bạn nữ khác chưa quay
-    const reserved = pendingGirls().filter(g => !same(g, girl)).map(g => state.rig[g]).filter(Boolean);
+    // 2) Ngẫu nhiên, nhưng tránh các bạn đang được "giữ chỗ" cho lượt có chỉ định chưa quay
+    const reserved = reservedBoys(girl, k);
     let free = pool.filter(b => !reserved.some(r => same(r, b)));
     if (!free.length) free = pool;
     const arr = new Uint32Array(1);
@@ -224,8 +257,8 @@
   function spin() {
     if (spinning) return;
     const girl = $('girlSelect').value;
-    if (!girl) { toast(pendingGirls().length ? 'Hãy chọn bạn nữ quay lượt này' : 'Đã đủ 13 bạn rồi! 🎉'); return; }
-    if (resultOf(girl)) { toast(girl + ' đã quay rồi'); return; }
+    if (!girl) { toast(pendingGirls().length ? 'Hãy chọn bạn nữ quay lượt này' : `Đã quay đủ ${totalTurns()} lượt rồi! 🎉`); return; }
+    if (isDone(girl)) { toast(`${girl} đã quay đủ ${PER_GIRL} lượt rồi`); return; }
     const pool = remainingBoys();
     if (!pool.length) { toast('Không còn bạn nam nào trên vòng quay'); return; }
 
@@ -271,6 +304,7 @@
     confetti();
     $('winName').textContent = boy;
     $('winGirl').textContent = girl;
+    $('winNth').textContent = `Món quà ${resultsOf(girl).length}/${PER_GIRL}`;
     $('winModal').classList.remove('hidden');
     $('btnWinOk').focus();
     renderResults(true);
@@ -299,10 +333,10 @@
     const prev = sel.value;
     const pend = pendingGirls();
     sel.innerHTML = pend.length
-      ? pend.map(g => `<option value="${esc(g)}">${esc(g)}</option>`).join('')
+      ? pend.map(g => `<option value="${esc(g)}">${esc(g)} — lượt ${resultsOf(g).length + 1}/${PER_GIRL}</option>`).join('')
       : '<option value="">— Đã quay xong —</option>';
-    if (pend.some(g => g === prev)) sel.value = prev;
-    $('turnCount').textContent = `${state.results.length}/${state.girls.length}`;
+    if (pend.some(g => g === prev)) sel.value = prev;   // bạn nữ chưa quay đủ thì giữ nguyên để quay tiếp
+    $('turnCount').textContent = `${state.results.length}/${totalTurns()}`;
   }
 
   function renderEntries() {
@@ -325,13 +359,18 @@
 
   function renderBoard() {
     const list = spinning ? state.results.slice(0, -1) : state.results;
+    // Mỗi thẻ là 1 bạn nữ, bên dưới là 3 bạn nam được bạn ấy tặng quà
     const cards = state.girls.map((g, i) => {
-      const r = list.find(x => same(x.girl, g));
+      const got = list.filter(x => same(x.girl, g)).map(x => x.boy);
       const c = COLORS[[1, 2, 3, 5, 4][i % 5]];
-      return r
-        ? `<div class="bcard" style="--c:${c}"><div class="boy">${esc(r.boy)}</div><div class="from">🎁 từ ${esc(g)}</div></div>`
-        : `<div class="bcard empty"><div class="boy">?</div><div class="from">🎁 từ ${esc(g)}</div></div>`;
+      let rows = '';
+      for (let j = 0; j < PER_GIRL; j++) {
+        rows += got[j] ? `<li>${esc(got[j])}</li>` : '<li class="q">?</li>';
+      }
+      return `<div class="bcard${got.length ? '' : ' empty'}" style="--c:${c}">` +
+        `<div class="from">🎁 ${esc(g)} tặng</div><ol>${rows}</ol></div>`;
     });
+    $('boardTitle').textContent = `🏆 ${totalTurns()} chàng trai may mắn`;
     $('boardGrid').innerHTML = cards.join('');
   }
 
@@ -362,18 +401,31 @@
   /* ---------- Bảng cài đặt / chỉ định ---------- */
   function renderRig() {
     const won = wonBoys();
-    const html = state.girls.map((g, gi) => {
-      const r = resultOf(g);
-      if (r) return `<div class="g done">${esc(g)}</div><div class="note">Đã quay: <b>${esc(r.boy)}</b></div>`;
-      const mine = state.rig[g] || '';
-      const takenByOthers = state.girls.filter(o => o !== g && !resultOf(o)).map(o => state.rig[o]).filter(Boolean);
-      const opts = state.boys.filter(b => !won.some(w => same(w, b))).map(b => {
-        const dis = takenByOthers.some(t => same(t, b)) ? ' disabled' : '';
-        const selAttr = same(b, mine) ? ' selected' : '';
-        return `<option value="${esc(b)}"${dis}${selAttr}>${esc(b)}</option>`;
-      }).join('');
-      return `<div class="g">${esc(g)}</div><select data-g="${gi}" class="${mine ? 'set' : ''}"><option value="">🎲 Ngẫu nhiên</option>${opts}</select>`;
-    }).join('');
+    const free = state.boys.filter(b => !won.some(w => same(w, b)));   // bạn nam chưa trúng
+    // Tất cả các ô chỉ định còn hiệu lực (lượt chưa quay): [{gi, j, boy}]
+    const slots = [];
+    state.girls.forEach((g, gi) => {
+      const plan = state.rig[g] || [];
+      for (let j = resultsOf(g).length; j < PER_GIRL; j++) if (plan[j]) slots.push({ gi, j, boy: plan[j] });
+    });
+
+    let html = '<div class="rh">Bạn nữ</div>';
+    for (let j = 0; j < PER_GIRL; j++) html += `<div class="rh">Lượt ${j + 1}</div>`;
+    state.girls.forEach((g, gi) => {
+      const got = resultsOf(g);
+      html += `<div class="g${got.length >= PER_GIRL ? ' done' : ''}">${esc(g)}</div>`;
+      for (let j = 0; j < PER_GIRL; j++) {
+        if (got[j]) { html += `<div class="spun">✓ ${esc(got[j].boy)}</div>`; continue; }
+        const mine = (state.rig[g] || [])[j] || '';
+        const opts = free.map(b => {
+          // Bạn nam đã được chỉ định ở ô khác thì không chọn được nữa
+          const dis = slots.some(s => !(s.gi === gi && s.j === j) && same(s.boy, b)) ? ' disabled' : '';
+          const selAttr = same(b, mine) ? ' selected' : '';
+          return `<option value="${esc(b)}"${dis}${selAttr}>${esc(b)}</option>`;
+        }).join('');
+        html += `<select data-g="${gi}" data-j="${j}" class="${mine ? 'set' : ''}"><option value="">🎲 Ngẫu nhiên</option>${opts}</select>`;
+      }
+    });
     $('rigTable').innerHTML = html;
     $('girlsText').value = state.girls.join('\n');
     $('classInput').value = state.className || '';
@@ -499,7 +551,10 @@
   $('rigTable').addEventListener('change', e => {
     const s = e.target.closest('select'); if (!s) return;
     const g = state.girls[+s.dataset.g];
-    if (s.value) state.rig[g] = s.value; else delete state.rig[g];
+    const plan = (state.rig[g] || []).slice();
+    while (plan.length < PER_GIRL) plan.push('');
+    plan[+s.dataset.j] = s.value;
+    if (plan.some(Boolean)) state.rig[g] = plan; else delete state.rig[g];
     save(); renderRig();
   });
   $('btnRigClear').addEventListener('click', () => {
@@ -526,7 +581,15 @@
   });
   $('btnCsv').addEventListener('click', () => {
     const cell = v => /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
-    const rows = [['STT', 'Bạn nam nhận quà', 'Bạn nữ tặng quà']].concat(state.results.map((r, i) => [String(i + 1), r.boy, r.girl]));
+    // Mỗi dòng 1 bạn nữ và 3 bạn nam được bạn ấy tặng quà
+    const head = ['STT', 'Bạn nữ tặng quà'];
+    for (let j = 1; j <= PER_GIRL; j++) head.push('Bạn nam ' + j);
+    const rows = [head].concat(state.girls.map((g, i) => {
+      const got = resultsOf(g).map(r => r.boy);
+      const row = [String(i + 1), g];
+      for (let j = 0; j < PER_GIRL; j++) row.push(got[j] || '');
+      return row;
+    }));
     const blob = new Blob(['﻿' + rows.map(r => r.map(cell).join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob); a.download = 'ket-qua-19-11.csv'; a.click();
@@ -548,7 +611,7 @@
     if (h.startsWith('cc=')) {
       try {
         const rig = decodeRig(h.slice(3));
-        if (rig && typeof rig === 'object' && !Array.isArray(rig)) { state.rig = rig; save(); }
+        if (rig && typeof rig === 'object' && !Array.isArray(rig)) { state.rig = rig; fixRig(state); save(); }
       } catch (e) { /* link hỏng thì bỏ qua */ }
       history.replaceState(null, '', location.pathname + location.search); // xoá dấu vết khỏi thanh địa chỉ
     } else if (h === 'cocau') {
